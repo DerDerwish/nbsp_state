@@ -4,24 +4,40 @@ require 'gtk2'
 require 'net/http'
 require 'json'
 
+# URI to spaceapi-file
+@uri = URI('http://status.nobreakspace.org/spaceapi.json')
+
 # Start
 @si        = Gtk::StatusIcon.new
 @si.pixbuf = Gdk::Pixbuf.new('pics/unknown.png')
-state = 'unknown'
+@state = 'unknown'
+@http = nil
 
 def getStatus
 	begin
-		json=JSON.parse(Net::HTTP.get(URI('http://status.nobreakspace.org/spaceapi.json')))
-		return json["open"] ? 'open' : 'closed'
+		@http = Net::HTTP.new(@uri.hostname)
+		res = @http.request_get(@uri.path)
+		json=JSON.parse(res.body)
 	rescue Exception => e
 		puts e.message
+		puts e.backtrace.inspect
+		@http = nil
+		puts "couldn't open http"
 	  return 'unknown'
 	end
+	@http = nil
+	return json["open"] ? 'open' : 'closed'
 end
 
 def updateStatus
-  state = getStatus
-	@si.pixbuf = Gdk::Pixbuf.new("pics/#{state}.png")
+  @state = getStatus
+	begin
+		@si.pixbuf = Gdk::Pixbuf.new("pics/#{@state}.png")
+	rescue Exception => e
+		puts "could not set pics/#{@state}.png"
+		puts e.message
+		puts e.backtrace.inspect
+	end
 	true
 end
 
